@@ -1,0 +1,48 @@
+ssh bc3lc@atlas-edr.sw.ehu.es 
+salloc -N 1
+squeue -u bc3lc
+ssh atlas-
+
+/scratch/bc3lc/IAM-FIRE/intermediate/stitches_experiment
+
+module load Python
+conda activate /scratch/bc3lc/conda-env/iam-fire-env
+
+chmod +x manager.job
+sed -i -e "s/\r$//" manager.job
+chmod +x manager_debug.job
+sed -i -e "s/\r$//" manager_debug.job
+chmod +x glm_model.job
+sed -i -e "s/\r$//" glm_model.job
+chmod +x stitch_array.job
+sed -i -e "s/\r$//" stitch_array.job
+chmod +x basd.job
+sed -i -e "s/\r$//" basd.job
+chmod +x climate_projections.job
+sed -i -e "s/\r$//" climate_proj.job
+chmod +x vegetation_proj.job
+sed -i -e "s/\r$//" vegetation_proj.job
+chmod +x fc_proj.job
+sed -i -e "s/\r$//" fc_proj.job
+chmod +x land_use_proj.job
+sed -i -e "s/\r$//" land_use_proj.job
+chmod +x bace_pred.job
+sed -i -e "s/\r$//" bace_pred.job
+
+sbatch /scratch/bc3lc/IAM-FIRE/intermediate/stitches_experiment/manager.job
+
+python /scratch/bc3lc/IAM-FIRE/code/python/IF_glm_model.py 
+python /scratch/bc3lc/IAM-FIRE/code/python/IF_land_use_proj.py 0 "stitches_experiment"
+python /scratch/bc3lc/IAM-FIRE/code/python/IF_bace_pred.py "stitches_experiment"
+
+sacct -j <jobID> 
+sacct -j <jobID> --format=MaxRSS,ReqMem,AllocCPUs
+sacct -o "JobID,JobName,AllocCPUs,ReqMem,MaxRSS,Elapsed" -j <jobID> 
+
+ssh atlas-
+free -h
+top -u bc3lc
+
+rm -r /scratch/bc3lc/GCAM_7.2_Impacts/dask_tmp/*
+
+cp /scratch/bc3lc/GCAM_7.2_Impacts/data/ISIMIP/* /scratch/bc3lc/IAM-FIRE/input/climate_variables/
