@@ -1,8 +1,10 @@
 # IAM-FIRE Repository 
 
-The repo provides instructions to run the Fire Impacts and Risks Emulator for IAMs (IAM-FIRE) for arbitrary IAM scenarios. It provides as an example IAM outputs for the scenario SSP2-RCP4.5 with outputs from the Global Change Analysis Model v8.2. 
+The repo provides the code and instructions to run the Integrated Assessment Model - Fire Impacts and Risks Emulator (IAM-FIRE) for arbitrary IAM scenarios. It provides IAM outputs for the scenario SSP2-RCP4.5 from the Global Change Analysis Model v8.2 for testing purposes. 
 
-The configuration is designed to be run on the High Performance Computer (HPC) of the Donostia International Physics Center (DIPC), hence the HPC configuration should be adapted to computational capacities and setups. 
+The inputs required to run IAM-FIRE are provided in Zenodo here: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18016585.svg)](https://doi.org/10.5281/zenodo.18016585). See instructions below for climate inputs. 
+
+The configuration is designed to run on the High Performance Computer (HPC) of the Donostia International Physics Center (DIPC). Hence the HPC configuration should be adapted to computational capacities and setups. 
 
 # Set up the Python environment 
 
@@ -41,13 +43,15 @@ pip install pyrealm
 
 # Local set-up and inputs 
 
-Simply clone this repository onto a local computer. 
+Clone this repository onto a local computer. 
 
 ```
 git clone https://github.com/bc3LC/IAM-FIRE
 ```
 
-The framework needs three inputs from any IAM scenario to run three streams: climate, vegetation and land use. For convenience, the inputs should be provided in the IAM-FIRE folders, before being uploaded to the HPC where it will run. 
+Download the input folder from Zenodo (link above) and add the uncompressed `input` folder to the `IAM-FIRE` main folder. This contains generic inputs used for all IAM-FIRE runs, except for climate data (see below). 
+
+The framework needs three inputs from any IAM scenario to run three streams: climate, vegetation and land use. For convenience, all the inputs (generic and IAM-specific) should be added first in the IAM-FIRE folder, before being uploaded to the HPC where it will run. 
 
 In the input folder, the `stitches_experiment` provides inputs for running IAM-FIRE with SSP2-4.5 inputs for illustrative purposes. For specific studies, duplicate the folder and modify its content accordingly.  
 
