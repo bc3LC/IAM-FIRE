@@ -1,0 +1,7 @@
+category,Shrubland,Grassland,Forest,RockIceDesert,Urbanland,Cropland
+Shrubland,1,0,0,0,0,0
+Grassland,0,1,0,0,0,0
+Forest,0,0,1,0,0,0
+RockIceDesert,0,0,0,1,0,0
+Urbanland,0,0,0,0,1,0
+Cropland,0,0,0,0,0,1

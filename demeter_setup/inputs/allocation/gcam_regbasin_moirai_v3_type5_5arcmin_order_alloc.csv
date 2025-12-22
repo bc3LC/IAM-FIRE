@@ -1,0 +1,7 @@
+category,order
+Cropland,1
+Grassland,2
+Forest,3
+Shrubland,4
+Urbanland,5
+RockIceDesert,6

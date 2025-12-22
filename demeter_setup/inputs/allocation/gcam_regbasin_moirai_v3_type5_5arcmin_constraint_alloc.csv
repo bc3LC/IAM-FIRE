@@ -1,0 +1,5 @@
+category,Shrubland,Grassland,Forest,RockIceDesert,Urbanland,Cropland
+nutrient_availability,0,0,0,0,0,0.4
+soil_quality,0,0,0,0,0,0.2
+suitableunprotected,0,0,0,0,0,0.9
+vegcarbon,0,0,0,0,0,0
