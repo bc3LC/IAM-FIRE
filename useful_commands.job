@@ -3,10 +3,23 @@ salloc -N 1
 squeue -u bc3lc
 ssh atlas-
 
+dipc_bc3lc NO
+dipc_bc3 NO
+bc3lc_dipc NO
+bc3_dipc YES 
+
 /scratch/bc3lc/IAM-FIRE/intermediate/stitches_experiment
 
 module load Python
 conda activate /scratch/bc3lc/conda-env/iam-fire-env
+
+/scratch/bc3lc/conda-env/impacts-env-2/bin/python /scratch/bc3lc/IAM-FIRE/code/python/IF_climate_proj.py stitches_experiment 
+/scratch/bc3lc/conda-env/impacts-env-2/bin/python /scratch/bc3lc/IAM-FIRE/code/python/IF_bace_pred.py stitches_experiment 
+/scratch/bc3lc/conda-env/impacts-env-2/bin/python /scratch/bc3lc/IAM-FIRE/code/python/IF_vegetation_proj.py stitches_experiment 
+
+
+/scratch/bc3lc/conda-env/impacts-env-2/bin/python /scratch/bc3lc/IAM-FIRE-EU/code/python/IF_bace_pred.py stitches_experiment 
+
 
 chmod +x manager.job
 sed -i -e "s/\r$//" manager.job
@@ -31,9 +44,12 @@ sed -i -e "s/\r$//" bace_pred.job
 
 sbatch /scratch/bc3lc/IAM-FIRE/intermediate/stitches_experiment/manager.job
 
+ls -ltr /scratch/bc3lc/IAM-FIRE/output/climate/
+
 python /scratch/bc3lc/IAM-FIRE/code/python/IF_glm_model.py 
-python /scratch/bc3lc/IAM-FIRE/code/python/IF_land_use_proj.py 0 "stitches_experiment"
-python /scratch/bc3lc/IAM-FIRE/code/python/IF_bace_pred.py "stitches_experiment"
+python /scratch/bc3lc/IAM-FIRE/code/python/IF_land_use_proj.py 0 stitches_experiment
+python /scratch/bc3lc/IAM-FIRE/code/python/IF_climate_proj.py stitches_experiment 
+python /scratch/bc3lc/IAM-FIRE/code/python/IF_bace_pred.py stitches_experiment
 
 sacct -j <jobID> 
 sacct -j <jobID> --format=MaxRSS,ReqMem,AllocCPUs

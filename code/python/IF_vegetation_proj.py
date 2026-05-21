@@ -116,7 +116,7 @@ def GPP_estimator_sim(dates_sim_m, elev, scenario, esm):
     # 2. Monthly VPD 
     vpd_pattern = f'{esm}_STITCHES_W5E5v2_{scenario}_vpd_global_monthly_{start_year}_{end_year}.nc'        
     vpd = xr.open_dataset(os.path.join(climate_dir, vpd_pattern))
-    vpd = vpd * 1e-3 # Unit from kPa to Pa
+    vpd = vpd * 1e3 # Unit from kPa to Pa
     
     # 3. CO2 
     CO2 = xr.open_dataset(os.path.join(climate_dir, f'CO2_{scenario}_monthly_{start}_{end}.nc')) # Unit in ppm
@@ -131,7 +131,8 @@ def GPP_estimator_sim(dates_sim_m, elev, scenario, esm):
     patm = patm.expand_dims(time=dates_sim_m)
     
     # 5. fAPAR - Static for now but could be projected (pending improvement)
-    fapar_clim = xr.open_dataset(os.path.join(IF_PATH, 'input/vegetation_productivity/fapar_monthly_climatology.nc'))
+    # fapar_clim = xr.open_dataset(os.path.join(IF_PATH, 'input/vegetation_productivity/fapar_monthly_climatology.nc'))
+    fapar_clim = xr.open_dataset(os.path.join(IF_PATH, 'input/vegetation_productivity/fapar_monthly_climatology_1819.nc'))
     month_numbers = [d.month for d in dates_sim_m]  # list of month numbers
     fapar = fapar_clim.sel(month=xr.DataArray(month_numbers, dims="time"))  # (time, lat, lon)
     fapar = fapar.assign_coords(time=("time", dates_sim_m))
@@ -220,22 +221,38 @@ def GPP_estimator_sim(dates_sim_m, elev, scenario, esm):
     gpp_ds["GPP_seasonality"] = seasonality_per_year
         
     # Save the GPP annual 
-    gpp_ds.to_netcdf(os.path.join(vegetation_dir, f'GPP_pModel_{scenario}_{esm}_season_2015-2100.nc')) # Save the seasonality index
+    print(gpp_ds)
+    gpp_ds.to_netcdf(os.path.join(vegetation_dir, f'GPP_pModel_{scenario}_{esm}_season_2015-2100_Mar26.nc')) # Save the seasonality index
         
     print("Step 3. Completed. GPP Seasonality estimated + File saved")
+    
+    # 1. Load your lat/lon coordinates from the dataset
+    lats = gpp_ds.lat.values
+    
+    # 2. Create the grid area weighting (in km2)
+    # We map your function over the latitude array
+    areas_km2 = np.array([grid_cell_area(l) for l in lats])
+    
+    # 3. Create an xarray DataArray for the area to allow broadcasting
+    # This makes it easy to multiply GPP(time, lat, lon) * Area(lat)
+    area_da = xr.DataArray(areas_km2, coords={'lat': gpp_ds.lat}, dims=['lat'])
+    
+    # 4. Calculate the Global Sum (Pg C)
+    # Logic: (g/m2 * (km2 * 1e6)) / 1e15  => simplified: (g/m2 * km2) * 1e-9
+    # Using .sum(dim=['lat', 'lon']) collapses the spatial dimensions
+    gpp_global_total = (gpp_ds['gpp'] * area_da * 1e-9).sum(dim=['lat', 'lon'])
+    
+    # 5. Group by Year (if your data is monthly)
+    gpp_annual_pg = gpp_global_total.groupby('time.year').sum()
+    
+    print("Annual Global GPP (Pg C/yr):")
+    print(gpp_annual_pg)
+    
 
     
 def var_multimodel_mean(scenario: str, esms: list[str], variable: str):
     """
     Compute the multi-model ensemble (MME) mean for a given variable across multiple ESMs.
-
-    Args:
-        scenario (list[str]): List of climate scenarios.
-        esm (list[str]): List of Earth System Models (ESMs).
-        variable (str): Variable name to process.
-
-    Returns:
-        dict: A dictionary containing the merged datasets for each scenario.
     """
 
     datasets = []  # List to hold datasets for merging
@@ -282,12 +299,11 @@ if __name__ == "__main__":
     print("Runs are prepared, processing GPP estimations")
     
     # STEP 1. Estimate GPP per Scenario and ESM 
-    # Iterate through each requested ESM and Experiment/Scenario
     for i, scenario in enumerate(scenarios):
         CO2_rasterize(CO2_trajectory, scenario)
         for j, esm in enumerate(esms):
-            # print(f'{esm} with scenario {scenario} being saved to {climate_dir}')
             GPP_estimator_sim(dates_sim_m, elev, scenario, esm)
+            print(f'{esm} with scenario {scenario} saved to {climate_dir}')
     print("GPP Completed per Scenario-ESM pair")
 
 

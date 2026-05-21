@@ -11,12 +11,6 @@ Output:
     - intermediate/<run_manager>_explicit_list.csv - file that explicitly lists out the details of each run requested
     - intermediate/<run_manager>.job - bash file for submitting jobs to slurm scheduler
     
-
-conda activate xesmf
-cd C:\GCAM\Theo\IAM-FIRE
-py code\python\IF_job_script_generation.py “stitches_experiment”
-
-
 """
 
 # Import Libraries
@@ -143,7 +137,6 @@ if __name__ == "__main__":
     os.makedirs(os.path.join(IF_PATH, intermediate_path, run_name), exist_ok=True)
     # Save dataframe of every run to csv
     mesh_stitch.to_csv(os.path.join(IF_PATH, intermediate_path, run_name, f'run_manager_explicit_list_stitch.csv'), index=False)
-
 
     # Read in parameters relating to slurm
     slurm_params = pd.read_csv(os.path.join(IF_PATH, input_files_path, run_name, 'slurm_parameters.csv'))
@@ -439,7 +432,7 @@ if __name__ == "__main__":
         
         
     # Create bash file for managing the above files in order
-    with open(os.path.join(intermediate_path, run_name, 'manager.job'), 'w') as job_file:
+    with open(os.path.join(IF_PATH, intermediate_path, run_name, 'manager.job'), 'w') as job_file:
         job_file.writelines(f"#!/bin/bash\n\n\n")
         job_file.writelines('# Slurm Settings\n')
         # job_file.writelines(f"#SBATCH --account={account}\n")
@@ -487,12 +480,8 @@ if __name__ == "__main__":
         job_file.writelines(f"fc_id=$(sbatch --parsable --dependency=afterok:$vegetation_id fc_proj.job '{run_name}')\n\n")
     
         job_file.writelines('# Run BACE predictor creation job\n')
-        # With Demeter run (new scenario added)
         job_file.writelines(f"bace_pred_id=$(sbatch --parsable --dependency=afterok:$fc_id:$land_use_id bace_pred.job '{run_name}')\n\n")
-        
-        # Without Demeter run (e.g. new ESM added)
-        # job_file.writelines(f"predictor_id=$(sbatch --parsable --dependency=afterok:$fc_id bace_predictor.job '{run_name}')\n\n")
-                
+                        
         job_file.writelines('# End timing and print runtime\n')
         job_file.writelines('end=$(date +%s.%N)\n')
         job_file.writelines('runtime=$( echo "($end - $start) / 60" | bc -l )\n')
