@@ -13,7 +13,7 @@ import xarray as xr  # Reading and manipulating NetCDF data
 import shutil
 
 # Importing Common Paths/Data/Functions
-from IF_setup import IF_PATH, landmask, remove_nas
+from IF_setup import IF_PATH, landmask, remove_nas, make_netcdf_encoding
 
 # PATHS
 basd_dir = os.path.join(IF_PATH, "output/basd/W5E5v2/")
@@ -24,39 +24,47 @@ start_year = 2015
 end_year = 2100
 dates_list = list(range(start_year, end_year+1))
 
+
 def tas_estimator_sim(scenario: str, esm: str):
     
     """
     Estimate monthly near-surface air temperature. 
-    Used for GPP by the P-Model
     """
     
     # Load daily tas
     tas_pattern = f'{esm}_STITCHES_W5E5v2_{scenario}_tas_global_daily_{start}_{end}.nc'
-    stitches_tas = xr.open_dataset(os.path.join(basd_dir, f'{esm}', f'{scenario}', 'basd', tas_pattern), chunks={"time": 365})
-    
-    stitches_tas = stitches_tas.resample(time="ME").mean()   
-    stitches_tas = stitches_tas.tas - 273.15 # Unit from K to C
-    stitches_tas = stitches_tas.where(landmask.mask == 1)
-    
-    stitches_tas.to_netcdf(os.path.join(climate_dir, f'{esm}_STITCHES_W5E5v2_{scenario}_tas_global_monthly_{start}_{end}.nc'))
+    stitches_tas = xr.open_dataset(os.path.join(basd_dir, f'{esm}', f'{scenario}', 'basd', tas_pattern), chunks={"time": 30})
+    stitches_tas = stitches_tas.resample(time="ME").mean()
+    stitches_tas = stitches_tas - 273.15 # Unit from K to C
+    # stitches_tas = stitches_tas.where(landmask.mask == 1).chunk({"time": 1,"lat": 360,"lon": 720})
+    stitches_tas = stitches_tas.where(landmask.mask == 1).chunk("auto")
+    print(stitches_tas)
+    encoding = make_netcdf_encoding(stitches_tas)
+    stitches_tas.to_netcdf(os.path.join(climate_dir, f'{esm}_STITCHES_W5E5v2_{scenario}_tas_global_monthly_{start}_{end}.nc'),
+                           engine="netcdf4",
+                           encoding=encoding)
 
 def ppfd_estimator_sim(scenario: str, esm: str):
     
     """
     Estimate monthly photosynthetic photon density from daily solar radiation
-    Used for GPP by the P-Model
     """
     
     # Load daily rsds
     rsds_pattern = f'{esm}_STITCHES_W5E5v2_{scenario}_rsds_global_daily_{start}_{end}.nc'
-    stitches_rsds = xr.open_dataset(os.path.join(basd_dir, f'{esm}', f'{scenario}', 'basd', rsds_pattern), chunks={"time": 365})
+    stitches_rsds = xr.open_dataset(os.path.join(basd_dir, f'{esm}', f'{scenario}', 'basd', rsds_pattern), chunks={"time": 30})
     
     stitches_rsds = stitches_rsds.resample(time="ME").mean()   
-    stitches_rsds = stitches_rsds.where(landmask.mask == 1)
+
+    # stitches_rsds = stitches_rsds.where(landmask.mask == 1).chunk({"time": 1, "lat": 360, "lon": 720})
+    stitches_rsds = stitches_rsds.where(landmask.mask == 1).chunk("auto")
+
     stitches_ppfd = stitches_rsds * 4.6 * 0.5 # Like HAAS, Conversion as factor of 4.6 (from W.m2 to umol.m2.s) and 0.5 (fraction of incoming solar irradiance that is photosynthetically active radiation (PAR); defaults to 0.5)
     
-    stitches_ppfd.to_netcdf(os.path.join(climate_dir, f'{esm}_STITCHES_W5E5v2_{scenario}_ppfd_global_monthly_{start}_{end}.nc'))
+    encoding = make_netcdf_encoding(stitches_ppfd)
+    stitches_ppfd.to_netcdf(os.path.join(climate_dir, f'{esm}_STITCHES_W5E5v2_{scenario}_ppfd_global_monthly_{start}_{end}.nc'),
+                            engine="netcdf4",
+                            encoding=encoding)
 
 
 def pr_estimator_sim(scenario: str, esm: str):
@@ -79,14 +87,22 @@ def pr_estimator_sim(scenario: str, esm: str):
     
     # Monthly aggregates
     stitches_pr_monthly = stitches_pr.resample(time="ME").mean()
+    
     stitches_pr_monthly["pr_sum_month"] = stitches_pr["pr"].resample(time="ME").sum()
     stitches_pr_monthly["pr_30d_sum_monthend"] = stitches_pr["pr_30d_sum"].resample(time="ME").last()
     
     # Apply landmask (broadcast automatically if dims match)
     stitches_pr_monthly = stitches_pr_monthly.where(landmask.mask == 1)
     
-    stitches_pr_annual = stitches_pr_monthly.resample(time="YE").mean()
-    stitches_pr_annual.to_netcdf(os.path.join(climate_dir, f'{esm}_STITCHES_W5E5v2_{scenario}_pr_global_annual_{start}_{end}.nc'))
+    stitches_pr_monthly = stitches_pr_monthly.persist()
+    
+    stitches_pr_annual = stitches_pr_monthly.resample(time="YE").mean().chunk({"time": 30})
+
+    encoding = make_netcdf_encoding(stitches_pr_annual)
+    stitches_pr_annual.to_netcdf(os.path.join(climate_dir, f'{esm}_STITCHES_W5E5v2_{scenario}_pr_global_annual_{start}_{end}.nc'),
+                                 engine="netcdf4",
+                                 encoding=encoding)
+
 
 
 def vpd_estimator_sim(scenario: str, esm: str):
@@ -112,15 +128,21 @@ def vpd_estimator_sim(scenario: str, esm: str):
     stitches_vpd = stitches_vpd.drop_vars(["tas", "hurs", "svp"])
 
     # Landmask 
-    stitches_vpd = stitches_vpd.where(landmask.mask == 1)
+    stitches_vpd = stitches_vpd.where(landmask.mask == 1).chunk({"time": 1, "lat": 360, "lon": 720})
                     
     # Maximum annual for GLM prediction
     stitches_vpd_annual = stitches_vpd.resample(time="YE").max()
-    stitches_vpd_annual.to_netcdf(os.path.join(climate_dir, f'{esm}_STITCHES_W5E5v2_{scenario}_vpd_global_annual_{start}_{end}.nc'))
+    encoding = make_netcdf_encoding(stitches_vpd_annual)
+    stitches_vpd_annual.to_netcdf(os.path.join(climate_dir, f'{esm}_STITCHES_W5E5v2_{scenario}_vpd_global_annual_{start}_{end}.nc'),
+                                  engine="netcdf4",
+                                  encoding=encoding)
 
     # Average monthly for GPP prediction
     stitches_vpd_monthly = stitches_vpd.resample(time="ME").mean()
-    stitches_vpd_monthly.to_netcdf(os.path.join(climate_dir, f'{esm}_STITCHES_W5E5v2_{scenario}_vpd_global_monthly_{start}_{end}.nc'))
+    encoding = make_netcdf_encoding(stitches_vpd_monthly)
+    stitches_vpd_monthly.to_netcdf(os.path.join(climate_dir, f'{esm}_STITCHES_W5E5v2_{scenario}_vpd_global_monthly_{start}_{end}.nc'),
+                                   engine="netcdf4",
+                                   encoding=encoding)
         
     print(f"Gridded monthly and annual VPD saved for scenario: {scenario} and ESM: {esm}")
 
@@ -130,7 +152,7 @@ def ndd_estimator_sim(scenario: str, esm: str):
 
     # Open the pr files 
     pr_pattern = f'{esm}_STITCHES_W5E5v2_{scenario}_pr_global_daily_{start}_{end}.nc'
-    stitches_pr = xr.open_dataset(os.path.join(basd_dir, f'{esm}', f'{scenario}', 'basd', pr_pattern), chunks={"time": 365})
+    stitches_pr = xr.open_dataset(os.path.join(basd_dir, f'{esm}', f'{scenario}', 'basd', pr_pattern), chunks={"time": 30})
 
     # Convert rain from kg m−2 s−1 to mm day−1 with Quilcaille equation 
     # stitches_pr["pr"] = stitches_pr["pr"] * 24 * 3600  # Keep it as an xarray DataArray
@@ -146,7 +168,7 @@ def ndd_estimator_sim(scenario: str, esm: str):
     dry_days_monthly = dry_days.resample(time="ME").sum()    
 
     # Landmask 
-    dry_days_monthly = dry_days_monthly.where(landmask.mask == 1)
+    dry_days_monthly = dry_days_monthly.where(landmask.mask == 1).chunk({"time": 30, "lat": 360, "lon": 720})
     
     # Rename pr to ndd
     dry_days_monthly = dry_days_monthly.rename("ndd")
@@ -175,7 +197,10 @@ def ndd_estimator_sim(scenario: str, esm: str):
         
     # Save output to NetCDF
     output_path = os.path.join(climate_dir, f'{esm}_STITCHES_W5E5v2_{scenario}_ndd_global_annual_{start}_{end}.nc')
-    dry_days_annual.to_netcdf(output_path)
+    encoding = make_netcdf_encoding(dry_days_annual)
+    dry_days_annual.to_netcdf(output_path, 
+                              engine="netcdf4",
+                              encoding=encoding)
         
     print("Completed. NDD Seasonality estimated + File saved")
     
@@ -193,11 +218,13 @@ def wind_estimator_sim(scenario: str, esm: str):
     # Merge wind and tas 
     stitches_merge = xr.merge([stitches_wind, stitches_tas])
     
+    print(stitches_merge)
+    
     # Sum at monthly scale 
     stitches_merge_m = stitches_merge.resample(time="ME").mean()    
 
     # Landmask 
-    stitches_merge_m = stitches_merge_m.where(landmask.mask == 1)
+    stitches_merge_m = stitches_merge_m.where(landmask.mask == 1).chunk({"time": 30, "lat": 360, "lon": 720})
     
     # Split dataset by years and process each one
     annual_winds = []
@@ -218,7 +245,7 @@ def wind_estimator_sim(scenario: str, esm: str):
         max_month_stacked = max_month.stack(point=('lat', 'lon'))
         
         # Get wind speeds at max temperature months
-        annual_wind_stacked = stacked['sfcWind'].isel(time=max_month_stacked)
+        annual_wind_stacked = stacked['sfcWind'].isel(time=max_month_stacked.compute())
         
         # Unstack back to original grid
         annual_wind = annual_wind_stacked.unstack('point')
@@ -241,7 +268,10 @@ def wind_estimator_sim(scenario: str, esm: str):
     combined["time"] = np.array([np.datetime64(f"{year}-12-31") for year in combined["time"].values])
         
     # Save the final dataset
-    combined.to_netcdf(os.path.join(climate_dir, f'{esm}_STITCHES_W5E5v2_{scenario}_sfcWind_global_annual_{start_year}_{end_year}.nc'))
+    encoding = make_netcdf_encoding(combined)
+    combined.to_netcdf(os.path.join(climate_dir, f'{esm}_STITCHES_W5E5v2_{scenario}_sfcWind_global_annual_{start_year}_{end_year}.nc'),
+                            engine="netcdf4",
+                            encoding=encoding)
     
     print(f"Gridded annual WIND SPEED saved for scenario: {scenario} and ESM: {esm}")
 
@@ -249,14 +279,6 @@ def wind_estimator_sim(scenario: str, esm: str):
 def var_multimodel_mean(scenario: str, esms: list[str], variable: str, frequency: str):
     """
     Compute the multi-model ensemble (MME) mean for a given variable across multiple ESMs.
-
-    Args:
-        scenario (list[str]): List of climate scenarios.
-        esm (list[str]): List of Earth System Models (ESMs).
-        variable (str): Variable name to process.
-
-    Returns:
-        dict: A dictionary containing the merged datasets for each scenario.
     """
 
     datasets = []  # List to hold datasets for merging
@@ -302,18 +324,30 @@ if __name__ == "__main__":
     dates_sim = slice(f"{start}-01-31", f"{end}-12-31")
     dates_sim_df = pd.date_range(start=f"{start}-01-31", end=f"{end}-12-31", freq='ME') 
 
-    print("Runs are prepared, processing with climate estimations")
-    
+    print("Runs are prepared, processing climate estimations")
+        
     # STEP 1. Estimate climate projections per Scenario and ESM 
     for i, scenario in enumerate(scenarios):
         for j, esm in enumerate(esms):
-            print(f'{esm} with scenario {scenario} being saved to {climate_dir}')
             tas_estimator_sim(scenario, esm)
+            print("Tas done")
+            
             ppfd_estimator_sim(scenario, esm)
+            print("PPFD done")
+            
             pr_estimator_sim(scenario, esm)
+            print("PR done")
+
             vpd_estimator_sim(scenario, esm)
+            print("VPD done")
+
             ndd_estimator_sim(scenario, esm)
+            print("NDD done")
+
             wind_estimator_sim(scenario, esm)
+            print("Wind done")
+
+            print(f'{esm} with scenario {scenario} saved to {climate_dir}')
     print("Climate projections completed")
 
     

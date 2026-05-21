@@ -2,7 +2,7 @@
 
 The repo provides the code and instructions to run the Integrated Assessment Model - Fire Impacts and Risks Emulator (IAM-FIRE) for arbitrary IAM scenarios. It provides IAM outputs for the scenario SSP2-RCP4.5 from the Global Change Analysis Model v8.2 for testing purposes. 
 
-The inputs required to run IAM-FIRE are provided in Zenodo here: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18016585.svg)](https://doi.org/10.5281/zenodo.18016585). See instructions below for climate inputs. 
+The inputs required to run IAM-FIRE are provided in Zenodo here: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20312037.svg)](https://doi.org/10.5281/zenodo.20312037). See instructions below for climate inputs. 
 
 The configuration is designed to run on the High Performance Computer (HPC) of the Donostia International Physics Center (DIPC). Hence the HPC configuration should be adapted to computational capacities and setups. 
 
@@ -35,7 +35,7 @@ The recommended branch Demeter works with GCAM v8 (and superior) with a baseline
 pip install git+http://github.com/JGCRI/demeter.git#egg=demeter
 ```
 
-Additionnally, you will need to install the package pyrealm ([pyrealm main page](https://pyrealm.readthedocs.io/en/latest/users/getting_started.html)) to compute Gross Primary Productivity: 
+Additionnally, you will need to install the package pyrealm ([pyrealm main page](https://pyrealm.readthedocs.io/en/latest/users/getting_started.html)) to compute Gross Primary Productivity (GPP): 
 
 ```
 pip install pyrealm
@@ -76,7 +76,7 @@ The `input/stitches-experiment` directory is an example of such a folder. For a 
 3. Open `run_manager.csv` and edit the available columns:
     * ESM
         * List the names of all the ESMs you want to use.
-        * Note: IAM-FIRE has been successfully run with CanESM5 and MPI-ESM1-2-LR and debugging/improvements are necessary to make it work with other ESMs.
+        * Note: IAM-FIRE has been successfully run with CanESM5 and MPI-ESM1-2-LR and has not been implemented with other ESMs.
     * ESM_Input_Location
         * Set the path to where the data for the ESM is stored. 
     * Output_Location
@@ -144,7 +144,7 @@ The land use projections of the historic period are derived from the ESA CCI Pla
 
 First, upload the raw land use results from the rgcam query in the `input/land_use/raw_land_allocation` folder (`GCAM_detailed_land_alloc_SSP2-4p5.csv` is provided as an example). 
 
-Second, run the script `code/R/Demeter_ESA.R` which will harmonize the GCAM land use projections with the ESA basemap used by Demeter. The data is saved in the `demeter_setup/inputs/projected` folder (`Scenario_SSP2-4p5_ESA_H_2019.csv` is provided as an example). 
+Second, run the script `code/R/Demeter_ESA_harmonization.R` which will harmonize the GCAM land use projections with the ESA basemap used by Demeter. The projected files is saved in the `demeter_setup/inputs/projected` folder and the configuration files in the `demeter_setup/config_files` folder (Examples are provided for SSP2-4.5). 
 
 **2. DEMETER to downscale aggregate land uses from other IAMs**
 
@@ -167,17 +167,17 @@ The static layers used in the GLM are provided for the simulated period in the `
 
 # Generate the job scripts for IAM-FIRE
 
-Run `IF_job-script-generation.py` from the root repository level, passing the name of your experiment folder as an argument, and making sure that your conda environment is activated. For example:
+Run `IF_job_script_generation.py` from the root repository level, passing the name of your experiment folder as an argument, and making sure that your conda environment is activated. For example:
 
 ```
-python code/python/IF_job-script-generation.py "<experiment_name>"
+python code/python/IF_job_script_generation.py "<experiment_name>"
 ```
 
 A new directory with the name of your experiment folder will be created in the `intermediate` directory. It will contain 11 files:
 
 1. `run_manager_explicit_list.csv`
     * This will list out the details of each run that you requested explicitly. It lists one row per scenario and variable, and will be used by `basd.job` to create one array per variable. 
-2. `run_manager_explicit_list_stitches.csv`
+2. `run_manager_explicit_list_stitch.csv`
     * This will list out the details of each run that you requested explicitly. It lists on row per scenario, and will be used by `stitch_array.job`.
 3. `manager.job`
     * This is a bash script responsible for calling the scripts in the correct order.
@@ -200,18 +200,17 @@ A new directory with the name of your experiment folder will be created in the `
 
 It's good to check that these files were generated as you expected. For example that the `.job` files include all the slurm metadata that you input, and check the explicit list file to see the tasks you've requested, and how many there are.
 
-Then, you're ready to run the IAM-FIRE scripts for your GCAM scenarios. 
+Then, you're ready to run the IAM-FIRE scripts for your scenarios. 
 
 # Running IAM-FIRE
 
 Once the inputs and job scripts are ready, you will need to upload the entire folder on your HPC environment where the results will be generated.
-   * Ensure the paths and names in the `IF_setup.py` are adapted to your HPC environment. 
-   * The data folder can be used to store any other files required for follow-up modelling or tools. 
-   * In the folder `input/climate_variables`, download the data that will used for the BASD process (details above). Ensure the path provided in `run_manager.csv` matches this path.
 
-1. Upload all the `IAM-FIRE` folder from the local server to your HPC (for ex. `scratch/bc3lc/[project_name]`). Note: this can be done using the `pc2hpc.sh` file provided in the repository. 
+1. Ensure the paths and names in the `IF_setup.py` are adapted to your HPC environment and upload all the `IAM-FIRE` folder from the local server to your HPC (for ex. `scratch/bc3lc/[project_name]`). Note: this can be done using the `pc2hpc.sh` file provided in the repository. 
 
-2. To run all the scripts at once, submit the `manager.job` script from the root repository level on the HPC session. For example:
+2. In the folder `input/climate_variables`, download the data that will used for the BASD process (details above). Ensure the path provided in `run_manager.csv` matches this path.
+
+3. To run all the scripts at once, submit the `manager.job` script from the root repository level on the HPC session. For example:
 ```
 sbatch intermediate/<experiment_name>/manager.job
 ```
@@ -235,12 +234,6 @@ The `manager` will launch successively a series of jobs which will run specific 
 6. `IF_fc_proj`: The script will read the climate inputs and compute FC
 7. `IF_land_use_proj`: The script will read the aggregate land use projections, run Demeter downscaling and process the outputs
 8. `IF_bace_pred`: The script will read all the projections and compute the burned area and carbon emissions per scenarios.  
-
-## Monitoring Job Progress (PENDING TO CONFIRM/EXPLORE) 
-
-There is a hidden directory in this repo `.out`, which stores the files generated by the slurm scheduler. As each step runs, check out the logs in these files to check progress, and use `squeue` to see how long jobs have been running.
-
-When you submit the `basd` portion of your jobs, you can view their progress, resource usage, etc. This is because the processes use [Dask](https://www.dask.org/), which give access the Dask dashboard. Once each `basd.job` script starts, find the respective log file in `.out`, and you'll quickly see two lines printed near the top of the file with commands that you can copy to access the Dask dashboard. Which one you will use varies depending on if you are running locally or remote. Generally you will use the remote command, which needs to be slightly edited manually, where you enter your remote details. You can then use your preferred browser to open the specified port and monitor the progress.
 
 # Managing and Processing the Output
 

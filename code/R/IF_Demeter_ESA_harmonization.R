@@ -21,7 +21,7 @@ library(stringr)
 basin.id <- read_excel("input/land_use/mappings/basin_to_country_mapping.xlsx",col_names = TRUE)
 region_mapping <- read.csv("input/land_use/mappings/gcam_regions_32.csv")
 gcam_long <- read.csv("input/land_use/basemap/GCAM_harmonization_basemap_ESA_2019.csv")
-detailed_land_allocation <- read.csv("input/land_use/raw_land_allocation/GCAM_detailed_land_alloc_SSP2-4p5.csv")
+detailed_land_allocation <- read.csv("input/land_use/raw_land_allocation/GCAM_detailed_land_alloc.csv")
 
 print("Creating Demeter inputs from GCAM land allocation query")
 

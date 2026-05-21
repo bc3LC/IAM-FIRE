@@ -37,7 +37,7 @@ basemap = pd.read_csv(os.path.join(IF_PATH, "demeter_setup/inputs/observed/ESA_0
 
 def area_checks(basemap, scenario: str):
     
-    scenario_harmonized = pd.read_csv(os.path.join(projected_dir, "Scenario_{scenario}_ESA_H_2019.csv")) 
+    scenario_harmonized = pd.read_csv(os.path.join(projected_dir, f"Scenario_{scenario}_ESA_H_2019.csv")) 
     basemap = basemap.rename(columns={"Latcoord": "lat", "Loncoord": "lon"})
     basemap["Grid_area"] = [grid_cell_area(lat) / 10000 for lat in basemap["lat"]]
     
@@ -74,8 +74,8 @@ def folder_rename(scenario: str):
         # Full path of the original file
         old_file_path = os.path.join(raw_outputs_dir, file)
         
-        # Extract scenario name: keep text before _2025...
-        new_name = re.sub(r"_2025.+", "", file)
+        # Extract scenario name: keep text before _2026...
+        new_name = re.sub(r"_2026.+", "", file)
         new_file_path = os.path.join(raw_outputs_dir, new_name)
         
         # Check if target exists and delete it 

@@ -215,7 +215,49 @@ def fuel_consumption(scenario, esm, fuel_load, biome_nc, gfed_fc, regions):
     fe_param_boreal["FC_Forest"] = fe_param_boreal["FC_Total"] + fe_param_boreal[f"FC_Boreal_Soil"]
         
     ###########################################################################
-    # 3. Apply the change ratio of dynamic FC to static GFED layer at 2019
+    # 3. Compute the weighted average of the Fuel Consumption Share (In total, how much % of the total carbon burns)
+    # (In total, what % of the available biomass carbon was consumed)
+    
+    # Calculate Total Above-Ground Biomass Carbon (The "Available" fuel)
+    # We must convert kg -> g and apply EF_C to match the FC units
+    total_agb_c = (fe_param_boreal["Live_Wood"] + 
+                   fe_param_boreal["Live_Leaf"] + 
+                   fe_param_boreal["Dead_Foliage"] + 
+                   fe_param_boreal["Dead_Wood"]) * 1e3 * fe_param_boreal["EF_C"]
+
+    # Compute Forest Fuel Consumption Share (%)
+    # Use .fillna(0) before the division if you suspect 'stem' or 'cwd' has NaNs
+    fe_param_boreal["FCS_Forest_Pct"] = (fe_param_boreal["FC_Forest"] / total_agb_c) * 100
+
+    # Compute Non-Forest Fuel Consumption Share (%)
+    # Non-forest usually only considers Leaf and Litter as available fuel
+    total_nf_c = (fe_param_boreal["Live_Leaf"] + 
+                  fe_param_boreal["Dead_Foliage"]) * 1e3 * fe_param_boreal["EF_C"]
+    
+    fe_param_boreal["FCS_NonForest_Pct"] = (fe_param_boreal["FC_NonForest"] / total_nf_c) * 100
+
+    # Clean up infinite values or NaNs from dividing by zero biomass
+    fe_param_boreal["FCS_Forest_Pct"] = fe_param_boreal["FCS_Forest_Pct"].where(total_agb_c > 0, 0)
+    fe_param_boreal["FCS_NonForest_Pct"] = fe_param_boreal["FCS_NonForest_Pct"].where(total_nf_c > 0, 0)
+    
+    # Cap percentages at 100%
+    fe_param_boreal["FCS_Forest_Pct"] = fe_param_boreal["FCS_Forest_Pct"].where(fe_param_boreal["FCS_Forest_Pct"] <= 100, 100)
+    fe_param_boreal["FCS_NonForest_Pct"] = fe_param_boreal["FCS_NonForest_Pct"].where(fe_param_boreal["FCS_NonForest_Pct"] <= 100, 100)    
+    
+    ###########################################################################
+    # 4. Lighten and save the final NETCDF
+    fcs_param = fe_param_boreal[["FCS_Forest_Pct", "FCS_NonForest_Pct"]]
+    
+    # Checks and consistency 
+    print(fcs_param["FCS_Forest_Pct"].mean(dim=["time", "lat", "lon"]))
+    print(fcs_param["FCS_NonForest_Pct"].mean(dim=["time", "lat", "lon"]))
+    
+    
+    print(f"Saving projected FCS for {scenario} and {esm}")
+    fcs_param.to_netcdf(os.path.join(fc_dir, f"FCS_{scenario}_{esm}_2019-2100_proj.nc"))
+    
+    ###########################################################################
+    # 5. Apply the change ratio of dynamic FC to static GFED layer at 2019
     
     # Lighten the final NETCDF
     fe_param_final = fe_param_boreal[["FC_Forest", "FC_NonForest"]]
