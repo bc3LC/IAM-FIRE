@@ -1,0 +1,20 @@
+chmod +x manager.job
+sed -i -e "s/\r$//" manager.job
+chmod +x manager_debug.job
+sed -i -e "s/\r$//" manager_debug.job
+chmod +x glm_model.job
+sed -i -e "s/\r$//" glm_model.job
+chmod +x stitch_array.job
+sed -i -e "s/\r$//" stitch_array.job
+chmod +x basd.job
+sed -i -e "s/\r$//" basd.job
+chmod +x climate_projections.job
+sed -i -e "s/\r$//" climate_proj.job
+chmod +x vegetation_proj.job
+sed -i -e "s/\r$//" vegetation_proj.job
+chmod +x fc_proj.job
+sed -i -e "s/\r$//" fc_proj.job
+chmod +x land_use_proj.job
+sed -i -e "s/\r$//" land_use_proj.job
+chmod +x bace_pred.job
+sed -i -e "s/\r$//" bace_pred.job
