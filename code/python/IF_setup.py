@@ -11,13 +11,22 @@ import pandas as pd
 import os
 from pathlib import Path
 
-cwd = os.getcwd() 
+cwd = os.getcwd()
 print("Current Working Directory:", cwd)
-os.chdir('C:/GCAM/Theo/IAM-FIRE/code/python')
 
-# COMMON PATHS 
-IF_PATH = "C:/GCAM/Theo/IAM-FIRE"
-# IF_PATH = "/scratch/bc3lc/IAM-FIRE"
+# Set IF_PATH automatically based on keywords in the cwd
+if "C:" in cwd or "GCAM" in cwd:
+    IF_PATH = "C:/GCAM/Theo/IAM-FIRE"
+elif "scratch" in cwd:
+    IF_PATH = "/scratch/bc3lc/IAM-FIRE"
+else:
+    # Fallback just in case
+    print("Warning: Path not recognized. Defaulting to Windows path.")
+    IF_PATH = "C:/GCAM/Theo/IAM-FIRE"
+
+# Change directory using the dynamically set IF_PATH
+os.chdir(f"{IF_PATH}/code/python")
+print("Successfully changed directory to:", os.getcwd())
 
 # HPC CONDA ENVIRONMENT
 conda_env = "iam-fire-env"

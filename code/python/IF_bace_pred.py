@@ -325,8 +325,12 @@ def master_csv(hist_nc, scenarios: list, esms: list):
                 "ESM": esm
             })
             
-            years_to_keep = [f"{y}-12-31" for y in range(2020, 2101, 5)]
-            pred_nc = pred_nc.sel(time=years_to_keep)
+            pred_nc = pred_nc[["BA_area_pred", "BA_area_for_pred", 
+                                      "FC_total_GFED_proj", "FC_for_GFED_proj", 
+                                      "CE_total_C_pred_GFED", "CE_for_C_pred_GFED"]]
+            
+            # years_to_keep = [f"{y}-12-31" for y in range(2020, 2101, 5)]
+            # pred_nc = pred_nc.sel(time=years_to_keep)
             
             scen_esm_labels.append(f"{scenario}_{esm}")
             master_nc.append(pred_nc)
@@ -816,19 +820,22 @@ if __name__ == "__main__":
     master_df = pd.concat(decomp_master)     
     master_df.to_csv(os.path.join(bace_dir, "BA_Factorial_Decomp_AllScen.csv")) 
     
-    ###########################################################################
-    # (BONUS) STEP 5. Export light version 
-    ###########################################################################
-    master_nc = xr.open_dataset(os.path.join(bace_dir, "BA_CE_Prediction_AllScen.nc"))
-    master_light = master_nc[["forest", "grassland", "shrubland", "cropland", 
-                              "vpd", "GPP", "Grid_area", 
-                              "FC_for_GFED_proj", "FC_total_GFED_proj",
-                              "BA_area_pred", "BA_area_for_pred", 
-                              "CE_for_C_pred_GFED", "CE_total_C_pred_GFED"]]
+    # ###########################################################################
+    # # (BONUS) STEP 5. Export light version 
+    # ###########################################################################
+    # master_nc = xr.open_dataset(os.path.join(bace_dir, "BA_CE_Prediction_AllScen.nc"))
+    # master_light = master_nc[["BA_area_pred", "BA_area_for_pred", 
+    #                           "FC_total_GFED_proj", "FC_for_GFED_proj", 
+    #                           "CE_total_C_pred_GFED", "CE_for_C_pred_GFED"]]
+    # master_light = master_light.assign_attrs(
+    #     creation_data = "29-Jul-2026", resolution = "0.5*0.5 degree", extent = "lat: 90S - 90N; lon: 180E - 180W",
+    #     product = "IAM-FIRE Outputs (BA, FC & CE) over 2020-2100 for 4 SSP-RCPs (SSP1-2.6, SSP2-4.5, SSP3-6.6, SSP5-7.6) and 2 ESMs (CanESM5, MPI-ESM1-2-LR))",
+    #     citation = "When using the data, please refer to the following publication; DOI https://doi.org/10.1111/gcb.70951. Suggested citation: Rouhette, T., Van de Ven, D.-J., Narayan, K., Tebaldi, C., Perkins, O., Haas, O., & Escobar, N. (2026). IAM-FIRE: A Climate Emulator–Based Framework to Project Wildfire Impacts and Risks for Integrated Assessment Models. Global Change Biology, 32(6), e70951. https://doi.org/10.1111/gcb.70951",
+    #     contact_person = "Théo Rouhette: theo.rouhette@bc3research.org")
     
-    # # Select the end of the year for each 5-year step
-    years_to_keep = [f"{y}-12-31" for y in range(2020, 2101, 5)]
-    master_light = master_light.sel(time=years_to_keep)
-    master_light.to_netcdf(os.path.join(bace_dir, "BA_CE_Prediction_AllScen_Light.nc"))
-    print("Light version of BA and CE prediction saved")
+    # # # Select the end of the year for each 5-year step
+    # # years_to_keep = [f"{y}-12-31" for y in range(2020, 2101, 5)]
+    # # master_light = master_light.sel(time=years_to_keep)
+    # master_light.to_netcdf(os.path.join(bace_dir, "IAM-FIRE_Pred_AllScen_BA-FC-CE.nc"))
+    # print("Light version of BA and CE prediction saved")
 
